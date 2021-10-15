@@ -1,0 +1,83 @@
+---
+title: "further_analysis"
+author: "lorenzotaddei"
+date: "15/10/2021"
+output: pdf_document
+---
+
+## Lasso regression used in the app
+For the application created in this project we used a Lasso regression. In this analysis the dipendent variable is the general rating and as indipendent variables 34 other variables (all the one that could fit for the analysis).
+As shown in the table here the regressors that had a higher coefficient were the other ratings that the customer gave to the accomodation: accuracy, communication, check-in and location. We consider those as very relevant regressor so we decided to keep them in our analaysis.
+```{r setup, include=FALSE}
+library(readr)
+ny_pre_app <- read_csv("~/Desktop/master/ny_pre_app.csv")
+knitr::opts_chunk$set(echo = TRUE)
+
+ny_df_pre_standardization <- select(ny_pre_app, -c('...1','id','neighbourhood_group_cleansed','price_new','lasso_rating'))
+
+# standardization function
+standardize_data <- function(x){
+  return((x-mean(x))/sd(x))
+}
+ny_df_standardized <- as.data.frame(apply(ny_df_pre_standardization,2,standardize_data))
+summary(ny_df_standardized)
+apply(ny_df_standardized,2,sd)    #run these to verify wether the data frame is strandardized
+
+## Running the Lasso
+
+# defining the dependent variable and the regressor matrix
+y <- as.vector(ny_df_standardized[,c('review_scores_value')])
+X<- select(ny_df_standardized, -c('review_scores_value'))
+library(glmnet)
+## lasso regression
+cv.lasso <- cv.glmnet(as.matrix(X), y, alpha = 1, nfolds=40, grouped=FALSE)
+lasso <- glmnet(X, y, alpha = 1, lambda = cv.lasso$lambda.min)
+coef(lasso)  ## coefficients
+
+## preparing data for the plot
+lasso_rating<-predict(lasso,as.matrix(X))
+str(y)
+ridge <- glmnet(X, y, alpha = 0, lambda = 1)
+coef(lasso)
+coef_lasso <- as.numeric(coef(lasso))
+d <- colnames(X[])
+gg <- append('intercept',d)
+lasso_plot <- as.data.frame(coef_lasso)
+lasso_plot$d <- gg
+colnames(lasso_plot) <- c("lasso_coefficient", "variable_name")
+library(ggplot2)
+lasso_plot %>%
+  ggplot(aes(x = variable_name, y = lasso_coefficient)) +
+  geom_bar(stat='identity')+
+  labs(title = "Lasso coefficient of each variable",
+       x ="Lasso coefficient",
+       y = "Variable name") +
+  theme_bw() +
+  theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 90, hjust = 0.5, vjust = 0.5),
+        axis.text.y = element_text(angle=90,colour = "grey20", size = 10),
+        text = element_text (size = 10),
+        plot.title = element_text(hjust = 0.5))
+```
+
+## A new Lasso regression
+To allow further interpretation, we decided to run another regression where the ratings that were previously included in the X matrix (the matrix containing the indipent variables) where not included.
+
+This allowed us to notice very interesting facts abo
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
